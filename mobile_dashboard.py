@@ -4,7 +4,7 @@ import pandas as pd
 import pandas_ta as ta
 
 # --- PAGE CONFIG ---
-st.set_page_config(page_title="Alpha Screener V4", layout="centered")
+st.set_page_config(page_title="Alpha Screener V5", layout="centered")
 
 # --- CSS STYLING ---
 st.markdown("""
@@ -32,10 +32,15 @@ st.markdown("""
     .stTabs [aria-selected="true"] {
         background-color: #0068C9;
     }
+    .stMetric {
+        background-color: #2a2a2a;
+        padding: 10px;
+        border-radius: 8px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🔥 Alpha Screener V4")
+st.title("🔥 Alpha Screener V5")
 
 # --- NIFTY 100 STOCK LIST (FOR SCREENER) ---
 NIFTY_100_TICKERS = [
@@ -65,31 +70,46 @@ NIFTY_100_TICKERS = [
 @st.cache_data(ttl=900)  # Cache data for 15 minutes
 def analyze_ticker(symbol, mode='screener'):
     try:
-        df = yf.download(symbol, period="3mo", interval="1d", progress=False)
+        df = yf.download(symbol, period="9mo", interval="1d", progress=False) # 9mo for 200SMA
         if df.empty: return None
 
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
-        # --- INDICATORS ---
+        # --- ALL INDICATORS ---
         sti = ta.supertrend(df['High'], df['Low'], df['Close'], length=7, multiplier=3)
         adx = ta.adx(df['High'], df['Low'], df['Close'], length=14)
-        
-        if sti is None or sti.empty or adx is None or adx.empty: return None
+        rsi = ta.rsi(df['Close'], length=14)
+        macd = ta.macd(df['Close'], fast=12, slow=26, signal=9)
+        sma_50 = ta.sma(df['Close'], length=50)
+        sma_200 = ta.sma(df['Close'], length=200)
 
+        if sti is None or adx is None or rsi is None or macd is None: return None
+
+        # Append all indicators to the DataFrame
         df['ST_DIR'] = sti[sti.columns[1]]
         df['ST_VAL'] = sti[sti.columns[0]]
         df['ADX'] = adx['ADX_14']
+        df['RSI'] = rsi
+        df = pd.concat([df, macd], axis=1) # Adds MACD, MACDh, MACDs
+        df['SMA_50'] = sma_50
+        df['SMA_200'] = sma_200
+        
+        # Drop NaN values for clean calcs
+        df.dropna(inplace=True)
+        
+        if df.empty: return None # Handle case where all data was NaN
 
         # --- LATEST VALUES ---
-        current_price = float(df['Close'].iloc[-1])
-        st_dir = int(df['ST_DIR'].iloc[-1])
-        st_val = float(df['ST_VAL'].iloc[-1])
-        adx_val = float(df['ADX'].iloc[-1])
-        
+        latest = df.iloc[-1]
+        current_price = float(latest['Close'])
+        st_dir = int(latest['ST_DIR'])
+        st_val = float(latest['ST_VAL'])
+        adx_val = float(latest['ADX'])
+
         # --- SCREENER MODE (FAST) ---
         if mode == 'screener':
-            st_previous = int(df['ST_DIR'].iloc[-2])
+            st_previous = int(df.iloc[-2]['ST_DIR'])
             is_crossover = (st_dir == 1 and st_previous == -1)
             signal = "WAIT"
             
@@ -113,25 +133,34 @@ def analyze_ticker(symbol, mode='screener'):
                     signal, reason, color = "BUY", f"Strong Uptrend (ADX {adx_val:.1f})", "green"
                     stop_loss = st_val
                     risk = current_price - stop_loss
-                    target = current_price + (risk * 1.5) # 1.5R Target
+                    if risk > 0:
+                        target = current_price + (risk * 1.5) # 1.5R Target
                 elif st_dir == -1: # SELL SIGNAL
                     signal, reason, color = "SELL", f"Strong Downtrend (ADX {adx_val:.1f})", "red"
                     stop_loss = st_val
                     risk = stop_loss - current_price
-                    target = current_price - (risk * 1.5) # 1.5R Target
+                    if risk > 0:
+                        target = current_price - (risk * 1.5) # 1.5R Target
             
-            return {
+            # Create full analysis dictionary
+            analysis = {
                 "symbol": symbol, "price": current_price, "signal": signal,
                 "reason": reason, "color": color, "adx": adx_val,
-                "stop_loss": stop_loss, "target": target, "df": df
+                "stop_loss": stop_loss, "target": target, "df": df,
+                "rsi": float(latest['RSI']),
+                "sma_50": float(latest['SMA_50']),
+                "sma_200": float(latest['SMA_200']),
+                "macd": float(latest[macd.columns[0]]), # MACD line
+                "macd_s": float(latest[macd.columns[2]]) # Signal line
             }
+            return analysis
 
     except Exception as e:
         st.error(f"Error processing {symbol}: {e}")
         return None
 
 # --- UI TABS ---
-tab1, tab2 = st.tabs(["🔥 NIFTY 100 Screener", "🔍 Manual Analysis"])
+tab1, tab2 = st.tabs(["🔥 NIFTY 100 Screener", "📊 Full Analysis"])
 
 # --- TAB 1: NIFTY 100 SCREENER ---
 with tab1:
@@ -151,7 +180,6 @@ with tab1:
         
         progress_bar.empty()
 
-        # Sort by Crossover, then ADX
         sorted_results = sorted(all_results, key=lambda x: (x['crossover'], x['adx']), reverse=True)
         top_5 = sorted_results[:5]
         
@@ -165,17 +193,16 @@ with tab1:
                     st.success(f"**{res['symbol']} (NEW CROSSOVER!)**")
                 else:
                     st.markdown(f"**{res['symbol']}**")
-                
                 c1, c2 = st.columns(2)
                 c1.metric("Price", f"₹{res['price']:.1f}")
-                c2.metric("ADX (Strength)", f"{res['adx']:.1f}")
+                c2.metric("ADX (Strength)", f"₹{res['adx']:.1f}")
 
-# --- TAB 2: MANUAL ANALYSIS ---
+# --- TAB 2: FULL ANALYSIS ---
 with tab2:
-    st.subheader("Get Detailed Entry/Exit Levels")
+    st.subheader("Get Detailed Stock Analysis")
     manual_ticker = st.text_input("Enter any symbol (e.g., ZOMATO.NS)", "").upper()
     
-    if st.button("Analyze Stock"):
+    if st.button("Analyze Stock", key="manual_analyze"):
         if not manual_ticker:
             st.error("Please enter a stock symbol.")
         else:
@@ -183,7 +210,7 @@ with tab2:
                 data = analyze_ticker(manual_ticker, mode='manual')
                 
                 if data:
-                    # Signal Card
+                    # --- 1. Signal Card ---
                     st.markdown(f"""
                         <div style="text-align: center; padding: 15px; background-color: {data['color']}; color: white; border-radius: 10px; margin-bottom: 20px;">
                             <h1 style='margin:0; font-size: 40px;'>{data['signal']}</h1>
@@ -191,13 +218,11 @@ with tab2:
                         </div>
                     """, unsafe_allow_html=True)
                     
-                    # Levels
+                    # --- 2. Actionable Levels ---
                     st.markdown("---")
                     st.subheader("Actionable Levels")
-                    
                     c1, c2, c3 = st.columns(3)
                     c1.metric("Entry Price", f"₹{data['price']:.2f}")
-                    
                     if data['signal'] != "WAIT":
                         c2.metric("Stop Loss (SL)", f"₹{data['stop_loss']:.2f}", delta_color="inverse")
                         c3.metric("Target (1.5R)", f"₹{data['target']:.2f}", delta_color="normal")
@@ -205,12 +230,42 @@ with tab2:
                         c2.metric("Stop Loss", "N/A")
                         c3.metric("Target", "N/A")
 
-                    # Chart
-                    with st.expander("View Chart"):
-                        st.line_chart(data['df']['Close'])
-                        st.line_chart(data['df']['ADX'])
+                    # --- 3. Indicator Dashboard ---
+                    st.markdown("---")
+                    st.subheader("Indicator Dashboard")
+                    
+                    # Row 1: RSI & ADX
+                    col1, col2 = st.columns(2)
+                    col1.metric("RSI (14)", f"{data['rsi']:.2f}")
+                    col2.metric("ADX (14)", f"{data['adx']:.2f}")
+                    
+                    # Row 2: Trend
+                    col3, col4 = st.columns(2)
+                    sma_delta = f"₹{(data['price'] - data['sma_50']):.2f} vs 50SMA"
+                    col3.metric("Price vs 50SMA", "ABOVE" if data['price'] > data['sma_50'] else "BELOW", delta=sma_delta)
+                    sma_delta_200 = f"₹{(data['price'] - data['sma_200']):.2f} vs 200SMA"
+                    col4.metric("Price vs 200SMA", "ABOVE" if data['price'] > data['sma_200'] else "BELOW", delta=sma_delta_200)
+
+                    # --- 4. Charts ---
+                    st.markdown("---")
+                    st.subheader("Charts")
+                    
+                    df_chart = data['df']
+                    
+                    with st.expander("Price + Supertrend + SMAs"):
+                        st.line_chart(df_chart[['Close', 'ST_VAL', 'SMA_50', 'SMA_200']].tail(150)) # Last 150 days
+
+                    with st.expander("RSI (Relative Strength Index)"):
+                        st.line_chart(df_chart['RSI'].tail(150))
+                        
+                    with st.expander("ADX (Trend Strength)"):
+                        st.line_chart(df_chart['ADX'].tail(150))
+
+                    with st.expander("MACD (Moving Average Convergence Divergence)"):
+                        st.line_chart(df_chart[[macd.columns[0], macd.columns[2]]].tail(150)) # MACD & Signal
+                        st.bar_chart(df_chart[macd.columns[1]].tail(150)) # Histogram
                 
                 else:
-                    st.error(f"Could not fetch data for {manual_ticker}. Check the symbol.")
+                    st.error(f"Could not fetch data for {manual_ticker}. Check symbol or data availability.")
 
 st.caption("Disclaimer: Delayed data. For educational use only. Do not trade real money.")
