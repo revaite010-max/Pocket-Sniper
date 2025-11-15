@@ -4,43 +4,150 @@ import pandas as pd
 import pandas_ta as ta
 
 # --- PAGE CONFIG ---
-st.set_page_config(page_title="Alpha Screener V5", layout="centered")
+st.set_page_config(page_title="Alpha Screener", layout="centered")
 
-# --- CSS STYLING ---
+# --- PRO UI STYLING (THE "GROWW" ATTEMPT) ---
 st.markdown("""
     <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    div.block-container {padding-top: 1rem;} 
+    /* --- Font --- */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body, .stApp, .stButton>button, .stTextInput>div>div>input, .stSelectbox>div>div>div {
+        font-family: 'Inter', sans-serif;
+    }
+    
+    /* --- Base Layout --- */
+    body {
+        background-color: #F0F2F6; /* Light gray background */
+    }
+    .stApp {
+        background-color: #F0F2F6;
+    }
+    /* Hide Streamlit elements */
+    #MainMenu, footer {
+        visibility: hidden;
+    }
+    div.block-container {
+        padding: 1rem 1rem 2rem 1rem;
+    }
+    
+    /* --- Custom Cards --- */
+    .card {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        margin-bottom: 12px;
+    }
+    .card h3 {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0 0 15px 0;
+    }
+    .card p {
+        font-size: 14px;
+        color: #4B5563;
+        margin-bottom: 5px;
+    }
+    
+    /* --- Buttons --- */
     .stButton>button {
         width: 100%;
-        font-weight: bold;
-        border-radius: 10px;
+        font-weight: 600;
+        border-radius: 8px;
+        background-color: #0068C9;
+        color: white;
+        border: none;
+        padding: 10px 0;
     }
+    .stButton>button:hover {
+        background-color: #0058AD;
+        color: white;
+    }
+    
+    /* --- Input Box --- */
+    .stTextInput>div>div>input {
+        background-color: #FFFFFF;
+        border-radius: 8px;
+        border: 1px solid #D1D5DB;
+    }
+    
+    /* --- Tabs --- */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
+        border-bottom: 2px solid #E5E7EB;
     }
     .stTabs [data-baseweb="tab"] {
         height: 40px;
-        white-space: pre-wrap;
-        background-color: #333;
-        border-radius: 8px 8px 0 0;
-        gap: 1px;
-        padding-top: 10px;
-        padding-bottom: 10px;
+        padding: 0 10px;
+        background-color: transparent;
+        border-bottom: 2px solid transparent;
+        color: #6B7280;
+        font-weight: 500;
     }
     .stTabs [aria-selected="true"] {
-        background-color: #0068C9;
+        background-color: transparent;
+        border-bottom: 2px solid #0068C9;
+        color: #0068C9;
+        font-weight: 600;
     }
-    .stMetric {
-        background-color: #2a2a2a;
+    
+    /* --- Signal Card --- */
+    .signal-card {
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+        margin-bottom: 16px;
+    }
+    .signal-buy { background-color: #ECFDF5; }
+    .signal-sell { background-color: #FEF2F2; }
+    .signal-wait { background-color: #F9FAFB; }
+    
+    .signal-card h1 {
+        font-size: 36px;
+        font-weight: 700;
+        margin: 0 0 5px 0;
+    }
+    .signal-buy h1 { color: #10B981; }
+    .signal-sell h1 { color: #EF4444; }
+    .signal-wait h1 { color: #6B7280; }
+    
+    .signal-card p {
+        font-size: 14px;
+        font-weight: 500;
+        margin: 0;
+    }
+    .signal-buy p { color: #059669; }
+    .signal-sell p { color: #DC2626; }
+    .signal-wait p { color: #4B5563; }
+    
+    /* --- Metric Box --- */
+    .metric-box {
+        background-color: #F9FAFB;
+        border: 1px solid #E5E7EB;
         padding: 10px;
         border-radius: 8px;
+        text-align: center;
     }
+    .metric-box h4 {
+        font-size: 12px;
+        font-weight: 500;
+        color: #6B7280;
+        margin: 0 0 5px 0;
+        text-transform: uppercase;
+    }
+    .metric-box p {
+        font-size: 18px;
+        font-weight: 600;
+        color: #111827;
+        margin: 0;
+    }
+    .metric-box-green p { color: #10B981; }
+    .metric-box-red p { color: #EF4444; }
+    
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🔥 Alpha Screener V5.2")
+st.title("Alpha Screener")
 
 # --- NIFTY 100 STOCK LIST (FOR SCREENER) ---
 NIFTY_100_TICKERS = [
@@ -59,120 +166,124 @@ NIFTY_100_TICKERS = [
     "BRITANNIA.NS", "REC.NS", "TATACONSUM.NS", "SHREECEM.NS", "APOLLOHOSP.NS", 
     "INDIGO.NS", "BEL.NS", "TATAPOWER.NS", "BANKBARODA.NS", "GODREJCP.NS", 
     "BOSCHLTD.NS", "ICICIPRULI.NS", "ICICILOMB.NS", "HAVELLS.NS", "PNB.NS", 
-    "INDUSTOWER.NS", "MANKIND.NS", "MARICO.NS", "AMBUJACEM.NS", 
+    "INDUSTOWER.NS", "MANKIND.NS", "MARICO.NS", "AMBUJACem.NS", 
     "AUROPHARMA.NS", "COLPAL.NS", "LUPIN.NS", "MUTHOOTFIN.NS", "PATANJALI.NS", 
     "UPL.NS", "ACC.NS", "DLF.NS", "GLAND.NS", "JUBLFOOD.NS", "PGHH.NS", 
     "TORRENTPOWER.NS", "NMDC.NS", "SAMVARDHANA.NS", "BERGEPAINT.NS", 
     "CANBK.NS", "MRF.NS", "NYKAA.NS", "TIINDIA.NS"
 ]
 
-# --- THE "BRAIN" - V5.2 ROBUST FUNCTION ---
+# --- THE "BRAIN" - V5.5 (Unchanged Logic) ---
 @st.cache_data(ttl=900)  # Cache data for 15 minutes
 def analyze_ticker(symbol, mode='screener'):
     try:
-        # THE FIX: Changed period to "2y". This is the robust fix.
         df = yf.download(symbol, period="2y", interval="1d", progress=False) 
-        
         if df.empty: return None
 
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
-        # --- ALL INDICATORS ---
         sti = ta.supertrend(df['High'], df['Low'], df['Close'], length=7, multiplier=3)
         adx = ta.adx(df['High'], df['Low'], df['Close'], length=14)
         rsi = ta.rsi(df['Close'], length=14)
-        macd = ta.macd(df['Close'], fast=12, slow=26, signal=9)
+        fast_len, slow_len, sig_len = 12, 26, 9
+        macd = ta.macd(df['Close'], fast=fast_len, slow=slow_len, signal=sig_len)
+        macd_line_col = f"MACD_{fast_len}_{slow_len}_{sig_len}"
+        macd_sig_col = f"MACDs_{fast_len}_{slow_len}_{sig_len}"
         sma_50 = ta.sma(df['Close'], length=50)
         sma_200 = ta.sma(df['Close'], length=200)
 
-        if sti is None or adx is None or rsi is None or macd is None or sma_50 is None or sma_200 is None:
-            return None # Check all indicators
-
-        # Append all indicators to the DataFrame
         df['ST_DIR'] = sti[sti.columns[1]]
         df['ST_VAL'] = sti[sti.columns[0]]
         df['ADX'] = adx['ADX_14']
         df['RSI'] = rsi
-        df = pd.concat([df, macd], axis=1) # Adds MACD, MACDh, MACDs
+        df = pd.concat([df, macd], axis=1)
         df['SMA_50'] = sma_50
         df['SMA_200'] = sma_200
         
-        # Drop NaN values for clean calcs
         df.dropna(inplace=True)
-        
-        if df.empty: 
-            # This was the error. 'dropna' was removing everything.
-            return None 
+        if df.empty: return None 
 
-        # --- LATEST VALUES ---
         latest = df.iloc[-1]
         current_price = float(latest['Close'])
         st_dir = int(latest['ST_DIR'])
         st_val = float(latest['ST_VAL'])
         adx_val = float(latest['ADX'])
 
-        # --- SCREENER MODE (FAST) ---
         if mode == 'screener':
             st_previous = int(df.iloc[-2]['ST_DIR'])
             is_crossover = (st_dir == 1 and st_previous == -1)
             signal = "WAIT"
-            
             if (st_dir == 1) and (adx_val > 25):
                 signal = "BUY"
-            
-            return {
-                "symbol": symbol, "price": current_price, "signal": signal,
-                "adx": adx_val, "crossover": is_crossover
-            }
+            return {"symbol": symbol, "price": current_price, "signal": signal, "adx": adx_val, "crossover": is_crossover}
 
-        # --- MANUAL MODE (DETAILED) ---
         elif mode == 'manual':
-            signal, reason, color = "WAIT", "Sideways", "gray"
+            signal, reason, color_class = "WAIT", "Sideways", "wait"
             stop_loss, target = 0.0, 0.0
+            summary_points = []
+            
+            # 1. Trend
+            if latest['Close'] > latest['SMA_50'] and latest['Close'] > latest['SMA_200']:
+                summary_points.append("✅ **Trend:** Price is above both the 50-day and 200-day moving averages, confirming a strong long-term uptrend.")
+            elif latest['Close'] > latest['SMA_50'] and latest['Close'] < latest['SMA_200']:
+                summary_points.append("⚠️ **Trend:** Short-term uptrend (above 50-day) but in a long-term downtrend (below 200-day).")
+            else:
+                summary_points.append("❌ **Trend:** Price is below its key moving averages, signaling a clear downtrend.")
 
+            # 2. Momentum
+            rsi_val = float(latest['RSI'])
+            if rsi_val > 70: summary_points.append(f"⚠️ **Momentum:** RSI is {rsi_val:.1f} (Overbought).")
+            elif rsi_val > 50: summary_points.append(f"✅ **Momentum:** RSI is {rsi_val:.1f} (Bullish).")
+            elif rsi_val < 30: summary_points.append(f"⚠️ **Momentum:** RSI is {rsi_val:.1f} (Oversold).")
+            else: summary_points.append(f"❌ **Momentum:** RSI is {rsi_val:.1f} (Bearish).")
+            
+            if latest[macd_line_col] > latest[macd_sig_col]:
+                summary_points.append("✅ **MACD:** The MACD line is above its signal line, reinforcing positive momentum.")
+            else:
+                summary_points.append("❌ **MACD:** The MACD line is below its signal line, indicating selling pressure.")
+
+            # 3. Strength
             if adx_val < 25:
                 reason = f"Sideways (ADX {adx_val:.1f})"
+                summary_points.append(f"⚠️ **Trend Strength:** The ADX is {adx_val:.1f}, indicating a weak or sideways market. **No clear trend.**")
             else:
-                if st_dir == 1: # BUY SIGNAL
-                    signal, reason, color = "BUY", f"Strong Uptrend (ADX {adx_val:.1f})", "green"
+                summary_points.append(f"✅ **Trend Strength:** The ADX is {adx_val:.1f}, confirming a **strong trend**.")
+
+            # 4. Signal
+            if adx_val > 25:
+                if st_dir == 1:
+                    signal, reason, color_class = "BUY", f"Strong Uptrend (ADX {adx_val:.1f})", "buy"
                     stop_loss = st_val
                     risk = current_price - stop_loss
-                    if risk > 0:
-                        target = current_price + (risk * 1.5) # 1.5R Target
-                elif st_dir == -1: # SELL SIGNAL
-                    signal, reason, color = "SELL", f"Strong Downtrend (ADX {adx_val:.1f})", "red"
+                    if risk > 0: target = current_price + (risk * 1.5)
+                elif st_dir == -1:
+                    signal, reason, color_class = "SELL", f"Strong Downtrend (ADX {adx_val:.1f})", "sell"
                     stop_loss = st_val
                     risk = stop_loss - current_price
-                    if risk > 0:
-                        target = current_price - (risk * 1.5) # 1.5R Target
+                    if risk > 0: target = current_price - (risk * 1.5)
             
-            # Create full analysis dictionary
+            final_summary = "\n\n".join(summary_points)
+            
             analysis = {
                 "symbol": symbol, "price": current_price, "signal": signal,
-                "reason": reason, "color": color, "adx": adx_val,
-                "stop_loss": stop_loss, "target": target, "df": df,
-                "rsi": float(latest['RSI']),
-                "sma_50": float(latest['SMA_50']),
-                "sma_200": float(latest['SMA_200']),
-                "macd": float(latest[macd.columns[0]]), # MACD line
-                "macd_s": float(latest[macd.columns[2]]) # Signal line
+                "reason": reason, "color_class": color_class, "stop_loss": stop_loss, "target": target,
+                "summary": final_summary
             }
             return analysis
 
     except Exception as e:
-        st.error(f"Error in analyze_ticker for {symbol}: {e}")
         return None
 
 # --- UI TABS ---
-tab1, tab2 = st.tabs(["🔥 NIFTY 100 Screener", "📊 Full Analysis"])
+tab1, tab2 = st.tabs(["🔥 Screener", "📊 Full Analysis"])
 
 # --- TAB 1: NIFTY 100 SCREENER ---
 with tab1:
-    st.subheader("Find Top 5 'BUY' Signals")
-    st.caption("Scans 100 stocks for Supertrend + ADX > 25. This will take 2-3 minutes.")
+    st.markdown("### NIFTY 100 Screener")
+    st.markdown("<p style='color: #4B5563; margin-top: -10px;'>Finds Top 5 'BUY' signals (Supertrend + ADX > 25).</p>", unsafe_allow_html=True)
     
-    if st.button("🚀 SCAN NIFTY 100"):
+    if st.button("🚀 SCAN NIFTY 100", key="scan_nifty"):
         progress_bar = st.progress(0, text="Initializing scan...")
         all_results = []
         total_stocks = len(NIFTY_100_TICKERS)
@@ -188,23 +299,27 @@ with tab1:
         sorted_results = sorted(all_results, key=lambda x: (x['crossover'], x['adx']), reverse=True)
         top_5 = sorted_results[:5]
         
-        st.subheader(f"🔥 Top {len(top_5)} Signals:")
+        st.markdown(f"### 🔥 Top {len(top_5)} Signals")
         if not top_5:
-            st.warning("No strong 'BUY' signals found in the NIFTY 100 right now.")
+            st.warning("No strong 'BUY' signals found. Market is sideways.")
         
         for res in top_5:
-            with st.container(border=True):
-                if res['crossover']:
-                    st.success(f"**{res['symbol']} (NEW CROSSOVER!)**")
-                else:
-                    st.markdown(f"**{res['symbol']}**")
-                c1, c2 = st.columns(2)
-                c1.metric("Price", f"₹{res['price']:.1f}")
-                c2.metric("ADX (Strength)", f"₹{res['adx']:.1f}")
+            crossover_badge = " <span style='background-color: #DBEAFE; color: #1E40AF; padding: 2px 6px; border-radius: 5px; font-size: 10px; font-weight: 600;'>NEW</span>" if res['crossover'] else ""
+            st.markdown(f"""
+                <div class='card'>
+                    <div style='display: flex; justify-content: space-between; align-items: center;'>
+                        <h3 style='margin: 0; font-size: 16px;'>{res['symbol']}{crossover_badge}</h3>
+                        <p style='margin: 0; font-size: 16px; font-weight: 600; color: #111827;'>₹{res['price']:.2f}</p>
+                    </div>
+                    <p style='margin-top: 5px; color: #6B7280;'>ADX Strength: {res['adx']:.1f}</p>
+                </div>
+            """, unsafe_allow_html=True)
 
-# --- TAB 2: FULL ANALYSIS ---
+# --- TAB 2: FULL ANALYSIS (SUMMARY VIEW) ---
 with tab2:
-    st.subheader("Get Detailed Stock Analysis")
+    st.markdown("### Manual Stock Analysis")
+    st.markdown("<p style='color: #4B5563; margin-top: -10px;'>Get a full technical summary for any stock.</p>", unsafe_allow_html=True)
+    
     manual_ticker = st.text_input("Enter any symbol (e.g., ZOMATO.NS)", "").upper()
     
     if st.button("Analyze Stock", key="manual_analyze"):
@@ -217,58 +332,43 @@ with tab2:
                 if data:
                     # --- 1. Signal Card ---
                     st.markdown(f"""
-                        <div style="text-align: center; padding: 15px; background-color: {data['color']}; color: white; border-radius: 10px; margin-bottom: 20px;">
-                            <h1 style='margin:0; font-size: 40px;'>{data['signal']}</h1>
-                            <p style='margin:0;'>{data['reason']}</p>
+                        <div class='signal-card signal-{data['color_class']}'>
+                            <h1>{data['signal']}</h1>
+                            <p>{data['reason']}</p>
                         </div>
                     """, unsafe_allow_html=True)
                     
                     # --- 2. Actionable Levels ---
-                    st.markdown("---")
-                    st.subheader("Actionable Levels")
-                    c1, c2, c3 = st.columns(3)
-                    c1.metric("Entry Price", f"₹{data['price']:.2f}")
                     if data['signal'] != "WAIT":
-                        c2.metric("Stop Loss (SL)", f"₹{data['stop_loss']:.2f}", delta_color="inverse")
-                        c3.metric("Target (1.5R)", f"₹{data['target']:.2f}", delta_color="normal")
-                    else:
-                        c2.metric("Stop Loss", "N/A")
-                        c3.metric("Target", "N/A")
+                        st.markdown(f"""
+                            <div class='card'>
+                                <h3>Actionable Levels</h3>
+                                <div style='display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;'>
+                                    <div class'metric-box'>
+                                        <h4>Entry Price</h4>
+                                        <p>₹{data['price']:.2f}</p>
+                                    </div>
+                                    <div class='metric-box metric-box-red'>
+                                        <h4>Stop Loss (SL)</h4>
+                                        <p>₹{data['stop_loss']:.2f}</p>
+                                    </div>
+                                    <div class='metric-box metric-box-green'>
+                                        <h4>Target (1.5R)</h4>
+                                        <p>₹{data['target']:.2f}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
 
-                    # --- 3. Indicator Dashboard ---
-                    st.markdown("---")
-                    st.subheader("Indicator Dashboard")
-                    
-                    # Row 1: RSI & ADX
-                    col1, col2 = st.columns(2)
-                    col1.metric("RSI (14)", f"{data['rsi']:.2f}")
-                    col2.metric("ADX (14)", f"{data['adx']:.2f}")
-                    
-                    # Row 2: Trend
-                    col3, col4 = st.columns(2)
-                    sma_delta = f"₹{(data['price'] - data['sma_50']):.2f} vs 50SMA"
-                    col3.metric("Price vs 50SMA", "ABOVE" if data['price'] > data['sma_50'] else "BELOW", delta=sma_delta)
-                    sma_delta_200 = f"₹{(data['price'] - data['sma_200']):.2f} vs 200SMA"
-                    col4.metric("Price vs 200SMA", "ABOVE" if data['price'] > data['sma_200'] else "BELOW", delta=sma_delta_200)
-
-                    # --- 4. Charts ---
-                    st.markdown("---")
-                    st.subheader("Charts")
-                    
-                    df_chart = data['df']
-                    
-                    with st.expander("Price + Supertrend + SMAs"):
-                        st.line_chart(df_chart[['Close', 'ST_VAL', 'SMA_50', 'SMA_200']].tail(200)) # Last 200 days
-
-                    with st.expander("RSI (Relative Strength Index)"):
-                        st.line_chart(df_chart['RSI'].tail(200))
-                        
-                    with st.expander("ADX (Trend Strength)"):
-                        st.line_chart(df_chart['ADX'].tail(200))
-
-                    with st.expander("MACD (Moving Average Convergence Divergence)"):
-                        st.line_chart(df_chart[[macd.columns[0], macd.columns[2]]].tail(200)) # MACD & Signal
-                        st.bar_chart(df_chart[macd.columns[1]].tail(200)) # Histogram
+                    # --- 3. Technical Summary ---
+                    st.markdown(f"""
+                        <div class='card'>
+                            <h3>Technical Summary</h3>
+                            <div style='font-size: 14px; color: #374151; line-height: 1.6;'>
+                                {data['summary'].replace("✅", "🟢 ").replace("⚠️", "🟡 ").replace("❌", "🔴 ").replace("\\n", "<br>")}
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
                 
                 else:
                     st.error(f"Could not fetch data for {manual_ticker}. Check symbol or data availability.")
