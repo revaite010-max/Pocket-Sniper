@@ -6,31 +6,18 @@ import pandas_ta as ta
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="Alpha Screener", layout="centered")
 
-# --- PRO UI STYLING (THE "GROWW" ATTEMPT) ---
+# --- PRO UI STYLING (V5.5) ---
 st.markdown("""
     <style>
-    /* --- Font --- */
+    /* ... (All CSS from V5.5 is unchanged) ... */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     body, .stApp, .stButton>button, .stTextInput>div>div>input, .stSelectbox>div>div>div {
         font-family: 'Inter', sans-serif;
     }
-    
-    /* --- Base Layout --- */
-    body {
-        background-color: #F0F2F6; /* Light gray background */
-    }
-    .stApp {
-        background-color: #F0F2F6;
-    }
-    /* Hide Streamlit elements */
-    #MainMenu, footer {
-        visibility: hidden;
-    }
-    div.block-container {
-        padding: 1rem 1rem 2rem 1rem;
-    }
-    
-    /* --- Custom Cards --- */
+    body { background-color: #F0F2F6; }
+    .stApp { background-color: #F0F2F6; }
+    #MainMenu, footer { visibility: hidden; }
+    div.block-container { padding: 1rem 1rem 2rem 1rem; }
     .card {
         background-color: #FFFFFF;
         border-radius: 12px;
@@ -48,8 +35,6 @@ st.markdown("""
         color: #4B5563;
         margin-bottom: 5px;
     }
-    
-    /* --- Buttons --- */
     .stButton>button {
         width: 100%;
         font-weight: 600;
@@ -63,15 +48,11 @@ st.markdown("""
         background-color: #0058AD;
         color: white;
     }
-    
-    /* --- Input Box --- */
     .stTextInput>div>div>input {
         background-color: #FFFFFF;
         border-radius: 8px;
         border: 1px solid #D1D5DB;
     }
-    
-    /* --- Tabs --- */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
         border-bottom: 2px solid #E5E7EB;
@@ -90,8 +71,6 @@ st.markdown("""
         color: #0068C9;
         font-weight: 600;
     }
-    
-    /* --- Signal Card --- */
     .signal-card {
         padding: 20px;
         border-radius: 12px;
@@ -120,7 +99,6 @@ st.markdown("""
     .signal-sell p { color: #DC2626; }
     .signal-wait p { color: #4B5563; }
     
-    /* --- Metric Box --- */
     .metric-box {
         background-color: #F9FAFB;
         border: 1px solid #E5E7EB;
@@ -144,10 +122,44 @@ st.markdown("""
     .metric-box-green p { color: #10B981; }
     .metric-box-red p { color: #EF4444; }
     
+    .st-expander-header {
+        background-color: #FFFFFF;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .st-expander-body {
+        background-color: #FFFFFF;
+        border-bottom-left-radius: 12px;
+        border-bottom-right-radius: 12px;
+        padding-top: 0px;
+        margin-top: -10px;
+    }
+    /* --- News Link Style --- */
+    .news-item {
+        font-size: 13px;
+        line-height: 1.5;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #F0F2F6;
+    }
+    .news-item a {
+        text-decoration: none;
+        font-weight: 600;
+        color: #111827;
+    }
+    .news-item a:hover {
+        color: #0068C9;
+    }
+    .news-item span {
+        font-size: 12px;
+        color: #6B7280;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("Alpha Screener")
+st.title("Alpha Screener V6.1")
 
 # --- NIFTY 100 STOCK LIST (FOR SCREENER) ---
 NIFTY_100_TICKERS = [
@@ -166,20 +178,20 @@ NIFTY_100_TICKERS = [
     "BRITANNIA.NS", "REC.NS", "TATACONSUM.NS", "SHREECEM.NS", "APOLLOHOSP.NS", 
     "INDIGO.NS", "BEL.NS", "TATAPOWER.NS", "BANKBARODA.NS", "GODREJCP.NS", 
     "BOSCHLTD.NS", "ICICIPRULI.NS", "ICICILOMB.NS", "HAVELLS.NS", "PNB.NS", 
-    "INDUSTOWER.NS", "MANKIND.NS", "MARICO.NS", "AMBUJACem.NS", 
+    "INDUSTOWER.NS", "MANKIND.NS", "MARICO.NS", "AMBUJACEM.NS", 
     "AUROPHARMA.NS", "COLPAL.NS", "LUPIN.NS", "MUTHOOTFIN.NS", "PATANJALI.NS", 
     "UPL.NS", "ACC.NS", "DLF.NS", "GLAND.NS", "JUBLFOOD.NS", "PGHH.NS", 
     "TORRENTPOWER.NS", "NMDC.NS", "SAMVARDHANA.NS", "BERGEPAINT.NS", 
     "CANBK.NS", "MRF.NS", "NYKAA.NS", "TIINDIA.NS"
 ]
 
-# --- THE "BRAIN" - V5.5 (Unchanged Logic) ---
+# --- THE "BRAIN" - V6.1 (FUNCTIONAL UPDATE) ---
 @st.cache_data(ttl=900)  # Cache data for 15 minutes
 def analyze_ticker(symbol, mode='screener'):
     try:
+        # --- TECHNICAL DATA (FAST) ---
         df = yf.download(symbol, period="2y", interval="1d", progress=False) 
         if df.empty: return None
-
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
@@ -210,6 +222,7 @@ def analyze_ticker(symbol, mode='screener'):
         st_val = float(latest['ST_VAL'])
         adx_val = float(latest['ADX'])
 
+        # --- SCREENER MODE (FAST) ---
         if mode == 'screener':
             st_previous = int(df.iloc[-2]['ST_DIR'])
             is_crossover = (st_dir == 1 and st_previous == -1)
@@ -218,12 +231,36 @@ def analyze_ticker(symbol, mode='screener'):
                 signal = "BUY"
             return {"symbol": symbol, "price": current_price, "signal": signal, "adx": adx_val, "crossover": is_crossover}
 
+        # --- MANUAL MODE (HEAVY - V6.1 UPDATE) ---
         elif mode == 'manual':
+            # --- FUNDAMENTAL & NEWS DATA (SLOWER) ---
+            ticker_obj = yf.Ticker(symbol)
+            info = ticker_obj.info
+            
+            # 1. Get Fundamentals
+            fundamentals = {
+                "pe": info.get("trailingPE"),
+                "eps": info.get("forwardEPS"),
+                "mcap": info.get("marketCap"),
+                "sector": info.get("sector")
+            }
+            
+            # 2. Get News
+            headlines = []
+            raw_news = ticker_obj.news
+            if raw_news:
+                for item in raw_news[:3]: # Get top 3
+                    headlines.append({
+                        "title": item.get('title'),
+                        "link": item.get('link'),
+                        "publisher": item.get('publisher')
+                    })
+
+            # --- TECHNICAL ANALYSIS (UNCHANGED) ---
             signal, reason, color_class = "WAIT", "Sideways", "wait"
             stop_loss, target = 0.0, 0.0
             summary_points = []
             
-            # 1. Trend
             if latest['Close'] > latest['SMA_50'] and latest['Close'] > latest['SMA_200']:
                 summary_points.append("✅ **Trend:** Price is above both the 50-day and 200-day moving averages, confirming a strong long-term uptrend.")
             elif latest['Close'] > latest['SMA_50'] and latest['Close'] < latest['SMA_200']:
@@ -231,7 +268,6 @@ def analyze_ticker(symbol, mode='screener'):
             else:
                 summary_points.append("❌ **Trend:** Price is below its key moving averages, signaling a clear downtrend.")
 
-            # 2. Momentum
             rsi_val = float(latest['RSI'])
             if rsi_val > 70: summary_points.append(f"⚠️ **Momentum:** RSI is {rsi_val:.1f} (Overbought).")
             elif rsi_val > 50: summary_points.append(f"✅ **Momentum:** RSI is {rsi_val:.1f} (Bullish).")
@@ -243,14 +279,12 @@ def analyze_ticker(symbol, mode='screener'):
             else:
                 summary_points.append("❌ **MACD:** The MACD line is below its signal line, indicating selling pressure.")
 
-            # 3. Strength
             if adx_val < 25:
                 reason = f"Sideways (ADX {adx_val:.1f})"
                 summary_points.append(f"⚠️ **Trend Strength:** The ADX is {adx_val:.1f}, indicating a weak or sideways market. **No clear trend.**")
             else:
                 summary_points.append(f"✅ **Trend Strength:** The ADX is {adx_val:.1f}, confirming a **strong trend**.")
 
-            # 4. Signal
             if adx_val > 25:
                 if st_dir == 1:
                     signal, reason, color_class = "BUY", f"Strong Uptrend (ADX {adx_val:.1f})", "buy"
@@ -268,17 +302,20 @@ def analyze_ticker(symbol, mode='screener'):
             analysis = {
                 "symbol": symbol, "price": current_price, "signal": signal,
                 "reason": reason, "color_class": color_class, "stop_loss": stop_loss, "target": target,
-                "summary": final_summary
+                "summary": final_summary,
+                "fundamentals": fundamentals, # ADDED
+                "headlines": headlines      # ADDED
             }
             return analysis
 
     except Exception as e:
+        # st.error(f"Error in analyze_ticker: {e}") # Suppress for cleaner UI
         return None
 
 # --- UI TABS ---
 tab1, tab2 = st.tabs(["🔥 Screener", "📊 Full Analysis"])
 
-# --- TAB 1: NIFTY 100 SCREENER ---
+# --- TAB 1: NIFTY 100 SCREENER (Unchanged from V6.0) ---
 with tab1:
     st.markdown("### NIFTY 100 Screener")
     st.markdown("<p style='color: #4B5563; margin-top: -10px;'>Finds Top 5 'BUY' signals (Supertrend + ADX > 25).</p>", unsafe_allow_html=True)
@@ -295,27 +332,46 @@ with tab1:
                 all_results.append(data)
         
         progress_bar.empty()
-
         sorted_results = sorted(all_results, key=lambda x: (x['crossover'], x['adx']), reverse=True)
         top_5 = sorted_results[:5]
         
         st.markdown(f"### 🔥 Top {len(top_5)} Signals")
-        if not top_5:
-            st.warning("No strong 'BUY' signals found. Market is sideways.")
+        if not top_5: st.warning("No strong 'BUY' signals found. Market is sideways.")
         
         for res in top_5:
             crossover_badge = " <span style='background-color: #DBEAFE; color: #1E40AF; padding: 2px 6px; border-radius: 5px; font-size: 10px; font-weight: 600;'>NEW</span>" if res['crossover'] else ""
-            st.markdown(f"""
-                <div class='card'>
-                    <div style='display: flex; justify-content: space-between; align-items: center;'>
-                        <h3 style='margin: 0; font-size: 16px;'>{res['symbol']}{crossover_badge}</h3>
-                        <p style='margin: 0; font-size: 16px; font-weight: 600; color: #111827;'>₹{res['price']:.2f}</p>
-                    </div>
-                    <p style='margin-top: 5px; color: #6B7280;'>ADX Strength: {res['adx']:.1f}</p>
-                </div>
-            """, unsafe_allow_html=True)
+            with st.expander(f"{res['symbol']}{crossover_badge}  |  Price: ₹{res['price']:.2f}  |  ADX: {res['adx']:.1f}"):
+                with st.spinner(f"Loading details for {res['symbol']}..."):
+                    data = analyze_ticker(res['symbol'], mode='manual')
+                if data:
+                    st.markdown(f"""
+                        <div class='signal-card signal-{data['color_class']}'>
+                            <h1>{data['signal']}</h1>
+                            <p>{data['reason']}</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    if data['signal'] != "WAIT":
+                        st.markdown(f"""
+                            <div class='card' style='margin-bottom: 0px;'>
+                                <h3>Actionable Levels</h3>
+                                <div style='display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;'>
+                                    <div class'metric-box'><h4>Entry Price</h4><p>₹{data['price']:.2f}</p></div>
+                                    <div class='metric-box metric-box-red'><h4>Stop Loss (SL)</h4><p>₹{data['stop_loss']:.2f}</p></div>
+                                    <div class='metric-box metric-box-green'><h4>Target (1.5R)</h4><p>₹{data['target']:.2f}</p></div>
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    st.markdown(f"""
+                        <div class='card' style='margin-bottom: 0px; margin-top: 10px;'>
+                            <h3>Technical Summary</h3>
+                            <div style='font-size: 14px; color: #374151; line-height: 1.6;'>
+                                {data['summary'].replace("✅", "🟢 ").replace("⚠️", "🟡 ").replace("❌", "🔴 ").replace("\\n", "<br>")}
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                else: st.error("Could not load full analysis.")
 
-# --- TAB 2: FULL ANALYSIS (SUMMARY VIEW) ---
+# --- TAB 2: FULL ANALYSIS (V6.1 UPDATED) ---
 with tab2:
     st.markdown("### Manual Stock Analysis")
     st.markdown("<p style='color: #4B5563; margin-top: -10px;'>Get a full technical summary for any stock.</p>", unsafe_allow_html=True)
@@ -326,7 +382,7 @@ with tab2:
         if not manual_ticker:
             st.error("Please enter a stock symbol.")
         else:
-            with st.spinner(f"Analyzing {manual_ticker}..."):
+            with st.spinner(f"Analyzing {manual_ticker}... (This is now slower)"):
                 data = analyze_ticker(manual_ticker, mode='manual')
                 
                 if data:
@@ -344,18 +400,9 @@ with tab2:
                             <div class='card'>
                                 <h3>Actionable Levels</h3>
                                 <div style='display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;'>
-                                    <div class'metric-box'>
-                                        <h4>Entry Price</h4>
-                                        <p>₹{data['price']:.2f}</p>
-                                    </div>
-                                    <div class='metric-box metric-box-red'>
-                                        <h4>Stop Loss (SL)</h4>
-                                        <p>₹{data['stop_loss']:.2f}</p>
-                                    </div>
-                                    <div class='metric-box metric-box-green'>
-                                        <h4>Target (1.5R)</h4>
-                                        <p>₹{data['target']:.2f}</p>
-                                    </div>
+                                    <div class'metric-box'><h4>Entry Price</h4><p>₹{data['price']:.2f}</p></div>
+                                    <div class='metric-box metric-box-red'><h4>Stop Loss (SL)</h4><p>₹{data['stop_loss']:.2f}</p></div>
+                                    <div class='metric-box metric-box-green'><h4>Target (1.5R)</h4><p>₹{data['target']:.2f}</p></div>
                                 </div>
                             </div>
                         """, unsafe_allow_html=True)
@@ -367,6 +414,40 @@ with tab2:
                             <div style='font-size: 14px; color: #374151; line-height: 1.6;'>
                                 {data['summary'].replace("✅", "🟢 ").replace("⚠️", "🟡 ").replace("❌", "🔴 ").replace("\\n", "<br>")}
                             </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # --- 4. KEY FUNDAMENTALS (NEW) ---
+                    st.markdown(f"""
+                        <div class='card'>
+                            <h3>Key Fundamentals</h3>
+                            <div style='display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;'>
+                                <div class'metric-box'>
+                                    <h4>P/E Ratio</h4>
+                                    <p>{data['fundamentals']['pe']:.2f if data['fundamentals']['pe'] else 'N/A'}</p>
+                                </div>
+                                <div class='metric-box'>
+                                    <h4>Forward EPS</h4>
+                                    <p>{data['fundamentals']['eps'] if data['fundamentals']['eps'] else 'N/A'}</p>
+                                </div>
+                                <div class='metric-box'>
+                                    <h4>Market Cap</h4>
+                                    <p>{f"{(data['fundamentals']['mcap']/1000000000000):.2f}L Cr" if data['fundamentals']['mcap'] else 'N/A'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+                    # --- 5. LATEST HEADLINES (NEW) ---
+                    st.markdown(f"""
+                        <div class='card'>
+                            <h3>Latest Headlines (The Noise)</h3>
+                            {''.join([f"""
+                                <div class='news-item'>
+                                    <a href='{item['link']}' target='_blank'>{item['title']}</a>
+                                    <span> - {item['publisher']}</span>
+                                </div>
+                            """ for item in data['headlines']]) if data['headlines'] else "<p>No recent news found.</p>"}
                         </div>
                     """, unsafe_allow_html=True)
                 
