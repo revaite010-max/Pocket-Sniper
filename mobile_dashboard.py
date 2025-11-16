@@ -6,99 +6,79 @@ import pandas_ta as ta
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="Alpha Screener", layout="centered")
 
-# --- PRO UI STYLING (V5.5) ---
+# --- PRO UI STYLING (V6.2 - DARK MODE OVERRIDE) ---
 st.markdown("""
     <style>
-    /* ... (All CSS from V5.5 is unchanged) ... */
+    /* --- Font & Base Colors --- */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    body, .stApp, .stButton>button, .stTextInput>div>div>input, .stSelectbox>div>div>div {
+    
+    /* FORCE LIGHT THEME TEXT COLORS */
+    html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
+        color: #1f2937; /* Dark Grey Text */
     }
-    body { background-color: #F0F2F6; }
-    .stApp { background-color: #F0F2F6; }
-    #MainMenu, footer { visibility: hidden; }
+    
+    /* Backgrounds */
+    .stApp {
+        background-color: #F0F2F6;
+    }
+    
+    /* --- Clean Up Streamlit Default UI --- */
+    #MainMenu, footer, header { visibility: hidden; }
     div.block-container { padding: 1rem 1rem 2rem 1rem; }
+    
+    /* --- Card Styling --- */
     .card {
         background-color: #FFFFFF;
         border-radius: 12px;
         padding: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         margin-bottom: 12px;
+        color: #1f2937; /* Force text dark */
     }
     .card h3 {
         font-size: 18px;
         font-weight: 600;
-        margin: 0 0 15px 0;
+        margin: 0 0 10px 0;
+        color: #111827; /* Black */
     }
     .card p {
         font-size: 14px;
         color: #4B5563;
         margin-bottom: 5px;
     }
-    .stButton>button {
-        width: 100%;
-        font-weight: 600;
-        border-radius: 8px;
-        background-color: #0068C9;
-        color: white;
-        border: none;
-        padding: 10px 0;
-    }
-    .stButton>button:hover {
-        background-color: #0058AD;
-        color: white;
-    }
-    .stTextInput>div>div>input {
-        background-color: #FFFFFF;
-        border-radius: 8px;
-        border: 1px solid #D1D5DB;
-    }
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        border-bottom: 2px solid #E5E7EB;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 40px;
-        padding: 0 10px;
-        background-color: transparent;
-        border-bottom: 2px solid transparent;
-        color: #6B7280;
-        font-weight: 500;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: transparent;
-        border-bottom: 2px solid #0068C9;
-        color: #0068C9;
-        font-weight: 600;
-    }
+
+    /* --- Signal Cards --- */
     .signal-card {
         padding: 20px;
         border-radius: 12px;
         text-align: center;
         margin-bottom: 16px;
+        border: 1px solid #E5E7EB;
     }
     .signal-buy { background-color: #ECFDF5; }
     .signal-sell { background-color: #FEF2F2; }
-    .signal-wait { background-color: #F9FAFB; }
+    .signal-wait { background-color: #FFFFFF; }
     
     .signal-card h1 {
-        font-size: 36px;
+        font-size: 32px;
         font-weight: 700;
-        margin: 0 0 5px 0;
+        margin: 0;
     }
-    .signal-buy h1 { color: #10B981; }
-    .signal-sell h1 { color: #EF4444; }
-    .signal-wait h1 { color: #6B7280; }
+    .signal-buy h1 { color: #059669 !important; }
+    .signal-sell h1 { color: #DC2626 !important; }
+    .signal-wait h1 { color: #6B7280 !important; }
     
     .signal-card p {
         font-size: 14px;
         font-weight: 500;
-        margin: 0;
+        margin-top: 5px;
     }
-    .signal-buy p { color: #059669; }
-    .signal-sell p { color: #DC2626; }
-    .signal-wait p { color: #4B5563; }
-    
+    .signal-buy p { color: #047857 !important; }
+    .signal-sell p { color: #B91C1C !important; }
+    .signal-wait p { color: #4B5563 !important; }
+
+    /* --- Metric Boxes --- */
     .metric-box {
         background-color: #F9FAFB;
         border: 1px solid #E5E7EB;
@@ -107,61 +87,82 @@ st.markdown("""
         text-align: center;
     }
     .metric-box h4 {
-        font-size: 12px;
-        font-weight: 500;
-        color: #6B7280;
-        margin: 0 0 5px 0;
+        font-size: 11px;
+        font-weight: 600;
+        color: #6B7280 !important;
+        margin: 0 0 4px 0;
         text-transform: uppercase;
     }
     .metric-box p {
-        font-size: 18px;
-        font-weight: 600;
-        color: #111827;
+        font-size: 16px;
+        font-weight: 700;
+        color: #111827 !important;
         margin: 0;
     }
-    .metric-box-green p { color: #10B981; }
-    .metric-box-red p { color: #EF4444; }
-    
-    .st-expander-header {
-        background-color: #FFFFFF;
-        border-radius: 12px;
-        font-size: 16px;
+    .metric-box-green p { color: #059669 !important; }
+    .metric-box-red p { color: #DC2626 !important; }
+
+    /* --- Inputs & Buttons --- */
+    .stTextInput input {
+        background-color: #FFFFFF !important;
+        color: #111827 !important;
+        border: 1px solid #D1D5DB;
+        border-radius: 8px;
+    }
+    .stButton>button {
+        width: 100%;
+        border-radius: 8px;
+        background-color: #2563EB;
+        color: white !important;
         font-weight: 600;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        border: none;
+        padding: 0.5rem 1rem;
     }
-    .st-expander-body {
-        background-color: #FFFFFF;
-        border-bottom-left-radius: 12px;
-        border-bottom-right-radius: 12px;
-        padding-top: 0px;
-        margin-top: -10px;
+    .stButton>button:hover {
+        background-color: #1D4ED8;
     }
-    /* --- News Link Style --- */
-    .news-item {
-        font-size: 13px;
-        line-height: 1.5;
-        margin-bottom: 10px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #F0F2F6;
+
+    /* --- Tabs --- */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background-color: transparent;
     }
-    .news-item a {
-        text-decoration: none;
-        font-weight: 600;
-        color: #111827;
-    }
-    .news-item a:hover {
-        color: #0068C9;
-    }
-    .news-item span {
-        font-size: 12px;
+    .stTabs [data-baseweb="tab"] {
+        background-color: transparent;
         color: #6B7280;
+        font-weight: 600;
     }
+    .stTabs [aria-selected="true"] {
+        color: #2563EB !important;
+        border-bottom-color: #2563EB !important;
+    }
+
+    /* --- Expanders (The Accordion) --- */
+    .streamlit-expanderHeader {
+        background-color: #FFFFFF !important;
+        color: #111827 !important;
+        border-radius: 8px;
+    }
+    div[data-testid="stExpander"] {
+        background-color: #FFFFFF;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 10px;
+        border: none;
+    }
+    div[data-testid="stExpander"] p {
+        color: #374151;
+    }
+
+    /* --- News Links --- */
+    .news-item a { color: #111827 !important; text-decoration: none; font-weight: 600; }
+    .news-item span { color: #6B7280 !important; font-size: 12px; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("Alpha Screener V6.1")
+st.title("Alpha Screener")
 
-# --- NIFTY 100 STOCK LIST (FOR SCREENER) ---
+# --- NIFTY 100 STOCK LIST ---
 NIFTY_100_TICKERS = [
     "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "BHARTIARTL.NS", 
     "SBIN.NS", "INFY.NS", "LICI.NS", "HINDUNILVR.NS", "ITC.NS", "LT.NS", 
@@ -185,11 +186,10 @@ NIFTY_100_TICKERS = [
     "CANBK.NS", "MRF.NS", "NYKAA.NS", "TIINDIA.NS"
 ]
 
-# --- THE "BRAIN" - V6.1 (FUNCTIONAL UPDATE) ---
-@st.cache_data(ttl=900)  # Cache data for 15 minutes
+# --- THE "BRAIN" - V6.1 (UNCHANGED) ---
+@st.cache_data(ttl=900)
 def analyze_ticker(symbol, mode='screener'):
     try:
-        # --- TECHNICAL DATA (FAST) ---
         df = yf.download(symbol, period="2y", interval="1d", progress=False) 
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex):
@@ -222,7 +222,6 @@ def analyze_ticker(symbol, mode='screener'):
         st_val = float(latest['ST_VAL'])
         adx_val = float(latest['ADX'])
 
-        # --- SCREENER MODE (FAST) ---
         if mode == 'screener':
             st_previous = int(df.iloc[-2]['ST_DIR'])
             is_crossover = (st_dir == 1 and st_previous == -1)
@@ -231,32 +230,25 @@ def analyze_ticker(symbol, mode='screener'):
                 signal = "BUY"
             return {"symbol": symbol, "price": current_price, "signal": signal, "adx": adx_val, "crossover": is_crossover}
 
-        # --- MANUAL MODE (HEAVY - V6.1 UPDATE) ---
         elif mode == 'manual':
-            # --- FUNDAMENTAL & NEWS DATA (SLOWER) ---
             ticker_obj = yf.Ticker(symbol)
             info = ticker_obj.info
-            
-            # 1. Get Fundamentals
             fundamentals = {
                 "pe": info.get("trailingPE"),
                 "eps": info.get("forwardEPS"),
                 "mcap": info.get("marketCap"),
                 "sector": info.get("sector")
             }
-            
-            # 2. Get News
             headlines = []
             raw_news = ticker_obj.news
             if raw_news:
-                for item in raw_news[:3]: # Get top 3
+                for item in raw_news[:3]:
                     headlines.append({
                         "title": item.get('title'),
                         "link": item.get('link'),
                         "publisher": item.get('publisher')
                     })
 
-            # --- TECHNICAL ANALYSIS (UNCHANGED) ---
             signal, reason, color_class = "WAIT", "Sideways", "wait"
             stop_loss, target = 0.0, 0.0
             summary_points = []
@@ -303,19 +295,18 @@ def analyze_ticker(symbol, mode='screener'):
                 "symbol": symbol, "price": current_price, "signal": signal,
                 "reason": reason, "color_class": color_class, "stop_loss": stop_loss, "target": target,
                 "summary": final_summary,
-                "fundamentals": fundamentals, # ADDED
-                "headlines": headlines      # ADDED
+                "fundamentals": fundamentals,
+                "headlines": headlines
             }
             return analysis
 
     except Exception as e:
-        # st.error(f"Error in analyze_ticker: {e}") # Suppress for cleaner UI
         return None
 
 # --- UI TABS ---
 tab1, tab2 = st.tabs(["🔥 Screener", "📊 Full Analysis"])
 
-# --- TAB 1: NIFTY 100 SCREENER (Unchanged from V6.0) ---
+# --- TAB 1: NIFTY 100 SCREENER ---
 with tab1:
     st.markdown("### NIFTY 100 Screener")
     st.markdown("<p style='color: #4B5563; margin-top: -10px;'>Finds Top 5 'BUY' signals (Supertrend + ADX > 25).</p>", unsafe_allow_html=True)
@@ -369,9 +360,15 @@ with tab1:
                             </div>
                         </div>
                     """, unsafe_allow_html=True)
+                    st.markdown(f"""
+                        <div class='card' style='margin-top: 10px;'>
+                            <h3>Latest Headlines</h3>
+                            {''.join([f"<div class='news-item'><a href='{item['link']}' target='_blank'>{item['title']}</a><br><span>{item['publisher']}</span></div>" for item in data['headlines']]) if data['headlines'] else "<p>No recent news.</p>"}
+                        </div>
+                    """, unsafe_allow_html=True)
                 else: st.error("Could not load full analysis.")
 
-# --- TAB 2: FULL ANALYSIS (V6.1 UPDATED) ---
+# --- TAB 2: FULL ANALYSIS ---
 with tab2:
     st.markdown("### Manual Stock Analysis")
     st.markdown("<p style='color: #4B5563; margin-top: -10px;'>Get a full technical summary for any stock.</p>", unsafe_allow_html=True)
@@ -382,11 +379,10 @@ with tab2:
         if not manual_ticker:
             st.error("Please enter a stock symbol.")
         else:
-            with st.spinner(f"Analyzing {manual_ticker}... (This is now slower)"):
+            with st.spinner(f"Analyzing {manual_ticker}..."):
                 data = analyze_ticker(manual_ticker, mode='manual')
                 
                 if data:
-                    # --- 1. Signal Card ---
                     st.markdown(f"""
                         <div class='signal-card signal-{data['color_class']}'>
                             <h1>{data['signal']}</h1>
@@ -394,7 +390,6 @@ with tab2:
                         </div>
                     """, unsafe_allow_html=True)
                     
-                    # --- 2. Actionable Levels ---
                     if data['signal'] != "WAIT":
                         st.markdown(f"""
                             <div class='card'>
@@ -407,7 +402,6 @@ with tab2:
                             </div>
                         """, unsafe_allow_html=True)
 
-                    # --- 3. Technical Summary ---
                     st.markdown(f"""
                         <div class='card'>
                             <h3>Technical Summary</h3>
@@ -417,41 +411,23 @@ with tab2:
                         </div>
                     """, unsafe_allow_html=True)
                     
-                    # --- 4. KEY FUNDAMENTALS (NEW) ---
                     st.markdown(f"""
                         <div class='card'>
                             <h3>Key Fundamentals</h3>
                             <div style='display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;'>
-                                <div class'metric-box'>
-                                    <h4>P/E Ratio</h4>
-                                    <p>{data['fundamentals']['pe']:.2f if data['fundamentals']['pe'] else 'N/A'}</p>
-                                </div>
-                                <div class='metric-box'>
-                                    <h4>Forward EPS</h4>
-                                    <p>{data['fundamentals']['eps'] if data['fundamentals']['eps'] else 'N/A'}</p>
-                                </div>
-                                <div class='metric-box'>
-                                    <h4>Market Cap</h4>
-                                    <p>{f"{(data['fundamentals']['mcap']/1000000000000):.2f}L Cr" if data['fundamentals']['mcap'] else 'N/A'}</p>
-                                </div>
+                                <div class'metric-box'><h4>P/E Ratio</h4><p>{data['fundamentals']['pe']:.2f if data['fundamentals']['pe'] else 'N/A'}</p></div>
+                                <div class='metric-box'><h4>Forward EPS</h4><p>{data['fundamentals']['eps'] if data['fundamentals']['eps'] else 'N/A'}</p></div>
+                                <div class='metric-box'><h4>Market Cap</h4><p>{f"{(data['fundamentals']['mcap']/1000000000000):.2f}L Cr" if data['fundamentals']['mcap'] else 'N/A'}</p></div>
                             </div>
                         </div>
                     """, unsafe_allow_html=True)
 
-                    # --- 5. LATEST HEADLINES (NEW) ---
                     st.markdown(f"""
                         <div class='card'>
-                            <h3>Latest Headlines (The Noise)</h3>
-                            {''.join([f"""
-                                <div class='news-item'>
-                                    <a href='{item['link']}' target='_blank'>{item['title']}</a>
-                                    <span> - {item['publisher']}</span>
-                                </div>
-                            """ for item in data['headlines']]) if data['headlines'] else "<p>No recent news found.</p>"}
+                            <h3>Latest Headlines</h3>
+                            {''.join([f"<div class='news-item'><a href='{item['link']}' target='_blank'>{item['title']}</a><br><span>{item['publisher']}</span></div>" for item in data['headlines']]) if data['headlines'] else "<p>No recent news found.</p>"}
                         </div>
                     """, unsafe_allow_html=True)
-                
-                else:
-                    st.error(f"Could not fetch data for {manual_ticker}. Check symbol or data availability.")
+                else: st.error(f"Could not fetch data for {manual_ticker}.")
 
 st.caption("Disclaimer: Delayed data. For educational use only. Do not trade real money.")
