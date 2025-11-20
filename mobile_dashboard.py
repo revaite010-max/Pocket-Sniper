@@ -4,7 +4,7 @@ import pandas as pd
 import pandas_ta as ta
 
 # --- PAGE CONFIG ---
-st.set_page_config(page_title="Alpha Screener V12", layout="centered")
+st.set_page_config(page_title="Alpha Screener V12.1", layout="centered")
 
 # --- PRO UI STYLING ---
 st.markdown("""
@@ -39,7 +39,7 @@ st.markdown("""
     .signal-buy { background-color: #ECFDF5 !important; }
     .signal-sell { background-color: #FEF2F2 !important; }
     .signal-wait { background-color: #FFFFFF !important; }
-    .signal-gem { background-color: #F0F9FF !important; } /* Blue for Gems */
+    .signal-gem { background-color: #F0F9FF !important; }
 
     .signal-card h1 { margin: 0 !important; font-size: 28px !important; font-weight: 700 !important; }
     .signal-buy h1 { color: #059669 !important; }
@@ -105,10 +105,9 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("Alpha Screener V12")
+st.title("Alpha Screener V12.1")
 
 # --- EXPANDED DEFAULT LIST (150+ Stocks) ---
-# Added Midcaps and F&O stocks to solve "Same stocks everyday" issue
 DEFAULT_TICKERS = [
     "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "BHARTIARTL.NS", "SBIN.NS", "INFY.NS", "LICI.NS", 
     "ITC.NS", "LT.NS", "HCLTECH.NS", "MARUTI.NS", "SUNPHARMA.NS", "ADANIENT.NS", "KOTAKBANK.NS", "TITAN.NS", 
@@ -117,7 +116,6 @@ DEFAULT_TICKERS = [
     "JSWSTEEL.NS", "TATASTEEL.NS", "HINDUNILVR.NS", "GRASIM.NS", "TECHM.NS", "HINDALCO.NS", "EICHERMOT.NS", 
     "DRREDDY.NS", "CIPLA.NS", "SBILIFE.NS", "BPCL.NS", "BRITANNIA.NS", "APOLLOHOSP.NS", "TATACONSUM.NS", 
     "DIVISLAB.NS", "HEROMOTOCO.NS", "ASIANPAINT.NS", "BAJAJ-AUTO.NS", "LTIM.NS", "INDUSINDBK.NS", 
-    # Added Midcaps & F&O
     "ZOMATO.NS", "DLF.NS", "HAL.NS", "BEL.NS", "VBL.NS", "TRENT.NS", "SIEMENS.NS", "ABB.NS", "PIDILITIND.NS", 
     "INDIGO.NS", "CHOLAFIN.NS", "TVSMOTOR.NS", "HAVELLS.NS", "JINDALSTEL.NS", "GAIL.NS", "AMBUJACEM.NS", 
     "SHRIRAMFIN.NS", "BANKBARODA.NS", "CANBK.NS", "VEDL.NS", "PNB.NS", "RECLTD.NS", "PFC.NS", "ADANIENSOL.NS", 
@@ -129,7 +127,7 @@ DEFAULT_TICKERS = [
     "FEDERALBNK.NS", "BANDHANBNK.NS", "ABCAPITAL.NS", "MFSL.NS", "MAXHEALTH.NS", "LALPATHLAB.NS", "SYNGENE.NS"
 ]
 
-# --- THE BRAIN (V12.0 - Value Squeeze Logic) ---
+# --- THE BRAIN (V12.1 - Fixed Logic) ---
 @st.cache_data(ttl=900)
 def analyze_ticker(symbol, mode='screener', scan_type='trend'):
     try:
@@ -149,20 +147,26 @@ def analyze_ticker(symbol, mode='screener', scan_type='trend'):
         
         # Indicators
         adx_val = 0.0
+        st_dir = 0 # Default to Neutral
         sma_200_val = None
         
+        # 1. Supertrend (RESTORED)
+        if data_len > 10:
+            sti = ta.supertrend(df['High'], df['Low'], df['Close'], length=7, multiplier=3)
+            if sti is not None: st_dir = int(sti[sti.columns[1]].iloc[-1])
+
+        # 2. SMA 200
         if data_len > 200:
             df['SMA_200'] = ta.sma(df['Close'], length=200)
             sma_200_val = float(df['SMA_200'].iloc[-1])
         
+        # 3. ADX
         if data_len > 15:
             adx = ta.adx(df['High'], df['Low'], df['Close'], length=14)
             if adx is not None: adx_val = float(adx['ADX_14'].iloc[-1])
 
         # --- SCREENER MODE ---
         if mode == 'screener':
-            # 1. BASIC TECHNICAL FILTER (Fast)
-            # Only fetch fundamentals if technicals pass to save time
             is_technical_pass = False
             
             if scan_type == 'value_squeeze':
@@ -170,12 +174,11 @@ def analyze_ticker(symbol, mode='screener', scan_type='trend'):
                 if sma_200_val and current_price > sma_200_val and adx_val < 25:
                     is_technical_pass = True
             else:
-                # Default Trend Scan (Supertrend > ADX)
-                sti = ta.supertrend(df['High'], df['Low'], df['Close'], length=7, multiplier=3)
-                if sti is not None and int(sti[sti.columns[1]].iloc[-1]) == 1 and adx_val > 25:
+                # Default Trend Scan (Supertrend BUY)
+                if st_dir == 1 and adx_val > 25:
                     return {"symbol": symbol, "price": current_price, "signal": "BUY"}
 
-            # 2. FUNDAMENTAL CHECK (Slow - Only if Tech Pass)
+            # Fundamental Check for Value Squeeze
             if is_technical_pass:
                 try:
                     ticker_obj = yf.Ticker(symbol)
@@ -183,7 +186,6 @@ def analyze_ticker(symbol, mode='screener', scan_type='trend'):
                     eps = info.get("forwardEPS", 0)
                     pe = info.get("trailingPE", 100)
                     
-                    # Criteria: Profitable (EPS > 0) AND Reasonable Valuations (PE < 80)
                     if eps is not None and eps > 0 and pe is not None and pe < 80:
                         return {
                             "symbol": symbol, 
@@ -193,11 +195,11 @@ def analyze_ticker(symbol, mode='screener', scan_type='trend'):
                             "adx": adx_val
                         }
                 except:
-                    pass # Skip if fundamental fetch fails
+                    pass
             
             return None
 
-        # --- MANUAL MODE ---
+        # --- MANUAL MODE (FIXED SIGNAL LOGIC) ---
         elif mode == 'manual':
             ticker_obj = yf.Ticker(symbol)
             fund_summary = []
@@ -212,22 +214,48 @@ def analyze_ticker(symbol, mode='screener', scan_type='trend'):
             fundamental_text = "\n\n".join(fund_summary)
 
             tech_text_list = []
+            
+            # DETERMINE SIGNAL (HIERARCHY)
+            signal = "WAIT"
+            color_class = "wait"
+            reason = "Neutral/Sideways"
+
+            # Priority 1: Supertrend (Immediate Action)
+            if st_dir == 1 and adx_val > 25:
+                signal = "BUY"
+                color_class = "buy"
+                reason = "Strong Uptrend"
+            elif st_dir == -1:
+                signal = "SELL"
+                color_class = "sell"
+                reason = "Downtrend Detected"
+            # Priority 2: Value Squeeze (Setup Phase)
+            elif sma_200_val and current_price > sma_200_val and adx_val < 25:
+                signal = "GEM"
+                color_class = "gem"
+                reason = "Value Squeeze (Consolidating)"
+            
+            # Build Tech Summary
             if sma_200_val and current_price > sma_200_val:
-                tech_text_list.append("✅ **Long Term Trend:** Bullish (Above 200 SMA).")
-            else:
-                tech_text_list.append("❌ **Long Term Trend:** Bearish (Below 200 SMA).")
+                tech_text_list.append("✅ **Long Term:** Bullish (Above 200 SMA).")
+            elif sma_200_val:
+                tech_text_list.append("❌ **Long Term:** Bearish (Below 200 SMA).")
             
             if adx_val < 25:
                 tech_text_list.append(f"⏳ **Volatility:** Low ({adx_val:.1f}). Stock is resting.")
             else:
                 tech_text_list.append(f"🔥 **Volatility:** High ({adx_val:.1f}). Stock is trending.")
+            
+            if st_dir == 1: tech_text_list.append("✅ **Supertrend:** Bullish")
+            else: tech_text_list.append("❌ **Supertrend:** Bearish")
 
             technical_text = "\n\n".join(tech_text_list)
 
             return {
                 "symbol": symbol, "price": current_price,
-                "signal": "GEM" if (sma_200_val and current_price > sma_200_val and adx_val < 25) else "WAIT",
-                "color_class": "gem" if (sma_200_val and current_price > sma_200_val and adx_val < 25) else "wait",
+                "signal": signal,
+                "color_class": color_class,
+                "reason": reason,
                 "technical_summary": technical_text,
                 "fundamental_summary": fundamental_text,
                 "target": current_price * 1.15,
@@ -240,7 +268,7 @@ def analyze_ticker(symbol, mode='screener', scan_type='trend'):
 # --- UI TABS ---
 tab1, tab2, tab3 = st.tabs(["💎 Value Squeeze", "🔥 Trend Scan", "📊 Analysis"])
 
-# --- TAB 1: VALUE SQUEEZE (NEW) ---
+# --- TAB 1: VALUE SQUEEZE ---
 with tab1:
     st.markdown("### Fundamental Gems in Consolidation")
     st.markdown("""
@@ -252,7 +280,6 @@ with tab1:
     </div>
     """, unsafe_allow_html=True)
     
-    # Configurable list
     with st.expander("⚙️ Configure List (Default: Top 150 Stocks)", expanded=False):
         default_str = ", ".join([t.replace(".NS", "") for t in DEFAULT_TICKERS])
         user_input = st.text_area("Edit List:", default_str)
@@ -261,21 +288,18 @@ with tab1:
     if st.button("💎 FIND GEMS"):
         progress_bar = st.progress(0, text="Scanning Fundamentals & Technicals...")
         results = []
-        target_list = SCAN_LIST[:100] # Limit to prevent timeout
+        target_list = SCAN_LIST[:100]
         
         for i, ticker in enumerate(target_list):
             progress_bar.progress((i + 1) / len(target_list), text=f"Analyzing: {ticker}")
-            # Pass scan_type='value_squeeze' to trigger fundamental check
             data = analyze_ticker(ticker, mode='screener', scan_type='value_squeeze')
             if data: results.append(data)
         
         progress_bar.empty()
-        
-        # Sort by P/E (Value)
         results = sorted(results, key=lambda x: x['pe'])
         
         st.markdown(f"### Found {len(results)} Gems")
-        if not results: st.info("No stocks match the 'Value + Consolidation' criteria today.")
+        if not results: st.info("No stocks match criteria today.")
         
         for res in results:
             with st.expander(f"{res['symbol']} 💎 P/E: {res['pe']:.1f} | ₹{res['price']:.2f}"):
@@ -297,7 +321,7 @@ with tab1:
                         </div>
                     """, unsafe_allow_html=True)
 
-# --- TAB 2: TREND SCAN (OLD SCREENER) ---
+# --- TAB 2: TREND SCAN ---
 with tab2:
     st.markdown("### Trend Scanner")
     if st.button("🚀 START TREND SCAN"):
@@ -336,6 +360,7 @@ with tab3:
                 st.markdown(f"""
                     <div class='signal-card signal-{data['color_class']}'>
                         <h1>{data['signal']}</h1>
+                        <p>{data['reason']}</p>
                     </div>
                     <div class='card'>
                         <h3>Technical View</h3>
